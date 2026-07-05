@@ -489,37 +489,37 @@ function Index() {
         <div id="organize">
           <SectionTitle>Organize</SectionTitle>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Merge />
-            <Split />
-            <Reorder />
-            <DeleteTool />
-            <Rotate />
+            <div id="merge"><Merge /></div>
+            <div id="split"><Split /></div>
+            <div id="reorder"><Reorder /></div>
+            <div id="delete"><DeleteTool /></div>
+            <div id="rotate"><Rotate /></div>
           </div>
         </div>
 
         <div id="convert">
           <SectionTitle>Convert</SectionTitle>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <ImagesToPdf />
-            <PdfToImages />
-            <ExtractText />
+            <div id="images-to-pdf"><ImagesToPdf /></div>
+            <div id="pdf-to-images"><PdfToImages /></div>
+            <div id="extract-text"><ExtractText /></div>
           </div>
         </div>
 
         <div id="edit">
           <SectionTitle>Edit</SectionTitle>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Sign />
-            <Watermark />
-            <PageNumbers />
-            <Metadata />
+            <div id="sign"><Sign /></div>
+            <div id="watermark"><Watermark /></div>
+            <div id="page-numbers"><PageNumbers /></div>
+            <div id="metadata"><Metadata /></div>
           </div>
         </div>
 
         <div id="optimize">
           <SectionTitle>Optimize</SectionTitle>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Compress />
+            <div id="compress"><Compress /></div>
           </div>
         </div>
 
