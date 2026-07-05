@@ -419,6 +419,43 @@ function Sign() {
   );
 }
 
+const categories = [
+  { id: "organize", label: "Organize", icon: <LayoutGrid className="h-3.5 w-3.5" /> },
+  { id: "convert", label: "Convert", icon: <ArrowRight className="h-3.5 w-3.5" /> },
+  { id: "edit", label: "Edit", icon: <PenLine className="h-3.5 w-3.5" /> },
+  { id: "optimize", label: "Optimize", icon: <Minimize2 className="h-3.5 w-3.5" /> },
+];
+
+function MiniToolbar() {
+  return (
+    <div className="sticky top-0 z-30 -mx-4 mb-6 border-b border-emerald-100 bg-white/80 px-4 py-2 backdrop-blur md:mx-0 md:rounded-lg md:border">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        <span className="hidden text-xs font-medium text-emerald-900 sm:inline whitespace-nowrap">Jump to:</span>
+        {categories.map((cat) => (
+          <button
+            key={cat.id}
+            onClick={() => {
+              document.getElementById(cat.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 hover:text-emerald-900 whitespace-nowrap"
+          >
+            {cat.icon}
+            {cat.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="mb-3 mt-6 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-emerald-800">
+      {children}
+    </h2>
+  );
+}
+
 function Index() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50/60 to-white">
@@ -440,22 +477,44 @@ function Index() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-6">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Merge />
-          <Split />
-          <Reorder />
-          <DeleteTool />
-          <Rotate />
-          <ImagesToPdf />
-          <PdfToImages />
-          <ExtractText />
-          <Sign />
-          <Watermark />
-          <PageNumbers />
-          <Metadata />
-          <Compress />
+        <MiniToolbar />
+
+        <div id="organize">
+          <SectionTitle>Organize</SectionTitle>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <Merge />
+            <Split />
+            <Reorder />
+            <DeleteTool />
+            <Rotate />
+          </div>
         </div>
 
+        <div id="convert">
+          <SectionTitle>Convert</SectionTitle>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <ImagesToPdf />
+            <PdfToImages />
+            <ExtractText />
+          </div>
+        </div>
+
+        <div id="edit">
+          <SectionTitle>Edit</SectionTitle>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <Sign />
+            <Watermark />
+            <PageNumbers />
+            <Metadata />
+          </div>
+        </div>
+
+        <div id="optimize">
+          <SectionTitle>Optimize</SectionTitle>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <Compress />
+          </div>
+        </div>
 
         <footer className="mt-8 text-center text-xs text-emerald-700/60">
           All processing happens locally. No uploads, no cloud, no tracking.
