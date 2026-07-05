@@ -6,7 +6,8 @@ export async function readFile(file: File): Promise<Uint8Array> {
 }
 
 export function download(bytes: Uint8Array | Blob, filename: string, mime = "application/pdf") {
-  const blob = bytes instanceof Blob ? bytes : new Blob([bytes], { type: mime });
+  const blob =
+    bytes instanceof Blob ? bytes : new Blob([new Uint8Array(bytes).buffer as ArrayBuffer], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
