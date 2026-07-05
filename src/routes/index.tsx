@@ -438,39 +438,22 @@ function Index() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-6">
-        <Tabs defaultValue="organize">
-          <TabsList className="mb-4 bg-emerald-100/60">
-            <TabsTrigger value="organize">Organize</TabsTrigger>
-            <TabsTrigger value="convert">Convert</TabsTrigger>
-            <TabsTrigger value="edit">Edit</TabsTrigger>
-            <TabsTrigger value="optimize">Optimize</TabsTrigger>
-          </TabsList>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Merge />
+          <Split />
+          <Reorder />
+          <DeleteTool />
+          <Rotate />
+          <ImagesToPdf />
+          <PdfToImages />
+          <ExtractText />
+          <Sign />
+          <Watermark />
+          <PageNumbers />
+          <Metadata />
+          <Compress />
+        </div>
 
-          <TabsContent value="organize" className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Merge />
-            <Split />
-            <Reorder />
-            <DeleteTool />
-            <Rotate />
-          </TabsContent>
-
-          <TabsContent value="convert" className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <ImagesToPdf />
-            <PdfToImages />
-            <ExtractText />
-          </TabsContent>
-
-          <TabsContent value="edit" className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Sign />
-            <Watermark />
-            <PageNumbers />
-            <Metadata />
-          </TabsContent>
-
-          <TabsContent value="optimize" className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Compress />
-          </TabsContent>
-        </Tabs>
 
         <footer className="mt-8 text-center text-xs text-emerald-700/60">
           All processing happens locally. No uploads, no cloud, no tracking.
