@@ -419,11 +419,20 @@ function Sign() {
   );
 }
 
-const categories = [
-  { id: "organize", label: "Organize", icon: <LayoutGrid className="h-3.5 w-3.5" /> },
-  { id: "convert", label: "Convert", icon: <ArrowRight className="h-3.5 w-3.5" /> },
-  { id: "edit", label: "Edit", icon: <PenLine className="h-3.5 w-3.5" /> },
-  { id: "optimize", label: "Optimize", icon: <Minimize2 className="h-3.5 w-3.5" /> },
+const tools = [
+  { id: "merge", label: "Merge PDFs", icon: <Combine className="h-3.5 w-3.5" /> },
+  { id: "split", label: "Split PDF", icon: <Scissors className="h-3.5 w-3.5" /> },
+  { id: "rotate", label: "Rotate", icon: <RotateCw className="h-3.5 w-3.5" /> },
+  { id: "delete", label: "Delete pages", icon: <Trash2 className="h-3.5 w-3.5" /> },
+  { id: "reorder", label: "Reorder", icon: <ArrowUpDown className="h-3.5 w-3.5" /> },
+  { id: "images-to-pdf", label: "Images → PDF", icon: <ImageIcon className="h-3.5 w-3.5" /> },
+  { id: "pdf-to-images", label: "PDF → Images", icon: <FileImage className="h-3.5 w-3.5" /> },
+  { id: "extract-text", label: "Extract text", icon: <Type className="h-3.5 w-3.5" /> },
+  { id: "sign", label: "Sign PDF", icon: <PenLine className="h-3.5 w-3.5" /> },
+  { id: "watermark", label: "Watermark", icon: <Droplets className="h-3.5 w-3.5" /> },
+  { id: "page-numbers", label: "Page numbers", icon: <Hash className="h-3.5 w-3.5" /> },
+  { id: "metadata", label: "Metadata", icon: <Info className="h-3.5 w-3.5" /> },
+  { id: "compress", label: "Compress", icon: <Minimize2 className="h-3.5 w-3.5" /> },
 ];
 
 function MiniToolbar() {
@@ -431,16 +440,16 @@ function MiniToolbar() {
     <div className="sticky top-0 z-30 -mx-4 mb-6 border-b border-emerald-100 bg-white/80 px-4 py-2 backdrop-blur md:mx-0 md:rounded-lg md:border">
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
         <span className="hidden text-xs font-medium text-emerald-900 sm:inline whitespace-nowrap">Jump to:</span>
-        {categories.map((cat) => (
+        {tools.map((tool) => (
           <button
-            key={cat.id}
+            key={tool.id}
             onClick={() => {
-              document.getElementById(cat.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+              document.getElementById(tool.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
             }}
             className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 hover:text-emerald-900 whitespace-nowrap"
           >
-            {cat.icon}
-            {cat.label}
+            {tool.icon}
+            {tool.label}
           </button>
         ))}
       </div>
