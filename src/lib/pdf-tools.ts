@@ -222,3 +222,38 @@ export async function getPageCount(file: File): Promise<number> {
   const doc = await PDFDocument.load(await readFile(file), { ignoreEncryption: true });
   return doc.getPageCount();
 }
+
+export async function signPdf(
+  file: File,
+  signatureDataUrl: string,
+  opts: {
+    page: number; // 1-indexed; 0 or negative means last page
+    position?: "bottom-right" | "bottom-left" | "bottom-center";
+    widthPct?: number; // width relative to page width (0-1)
+  } = { page: 0 },
+): Promise<Uint8Array> {
+  const doc = await PDFDocument.load(await readFile(file), { ignoreEncryption: true });
+  const pages = doc.getPages();
+  const total = pages.length;
+  const idx = opts.page && opts.page > 0 ? Math.min(opts.page, total) - 1 : total - 1;
+  const page = pages[idx];
+  const { width, height } = page.getSize();
+
+  const pngBytes = Uint8Array.from(atob(signatureDataUrl.split(",")[1]), (c) => c.charCodeAt(0));
+  const png = await doc.embedPng(pngBytes);
+  const targetW = width * (opts.widthPct ?? 0.35);
+  const scale = targetW / png.width;
+  const w = png.width * scale;
+  const h = png.height * scale;
+  const margin = 40;
+  const pos = opts.position ?? "bottom-right";
+  const x =
+    pos === "bottom-left"
+      ? margin
+      : pos === "bottom-center"
+        ? (width - w) / 2
+        : width - w - margin;
+  const y = margin;
+  page.drawImage(png, { x, y, width: w, height: h });
+  return await doc.save();
+}
