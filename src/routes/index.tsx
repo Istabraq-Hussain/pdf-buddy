@@ -17,8 +17,6 @@ import {
   Download,
   Loader2,
   PenLine,
-  LayoutGrid,
-  ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
