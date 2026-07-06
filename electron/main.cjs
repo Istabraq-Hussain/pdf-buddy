@@ -1,53 +1,67 @@
-// Electron main process — serves the built SPA locally and opens it in a window.
+// Electron main process — starts the bundled TanStack Start Node SSR
+// server on a random localhost port, then loads it in a window.
 const { app, BrowserWindow, shell } = require("electron");
-const http = require("http");
-const fs = require("fs");
+const { spawn } = require("child_process");
+const net = require("net");
 const path = require("path");
+const http = require("http");
 
-const ROOT = path.join(__dirname, "..", "dist", "client");
-
-const MIME = {
-  ".html": "text/html; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".mjs": "text/javascript; charset=utf-8",
-  ".css": "text/css; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".svg": "image/svg+xml",
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".ico": "image/x-icon",
-  ".wasm": "application/wasm",
-  ".woff": "font/woff",
-  ".woff2": "font/woff2",
-};
-
-function serve() {
-  return new Promise((resolve) => {
-    const server = http.createServer((req, res) => {
-      let url = decodeURIComponent((req.url || "/").split("?")[0]);
-      let filePath = path.join(ROOT, url === "/" ? "index.html" : url);
-      if (!filePath.startsWith(ROOT)) {
-        res.writeHead(403); return res.end();
-      }
-      fs.stat(filePath, (err, stat) => {
-        if (err || !stat.isFile()) {
-          // SPA fallback
-          filePath = path.join(ROOT, "index.html");
-        }
-        const ext = path.extname(filePath).toLowerCase();
-        res.setHeader("Content-Type", MIME[ext] || "application/octet-stream");
-        fs.createReadStream(filePath).pipe(res);
-      });
-    });
-    server.listen(0, "127.0.0.1", () => {
-      const port = server.address().port;
-      resolve(`http://127.0.0.1:${port}`);
+function findFreePort() {
+  return new Promise((resolve, reject) => {
+    const s = net.createServer();
+    s.unref();
+    s.on("error", reject);
+    s.listen(0, "127.0.0.1", () => {
+      const { port } = s.address();
+      s.close(() => resolve(port));
     });
   });
 }
 
+function waitForServer(url, timeoutMs = 15000) {
+  const start = Date.now();
+  return new Promise((resolve, reject) => {
+    const tick = () => {
+      const req = http.get(url, (res) => {
+        res.resume();
+        resolve();
+      });
+      req.on("error", () => {
+        if (Date.now() - start > timeoutMs) return reject(new Error("SSR server timeout"));
+        setTimeout(tick, 150);
+      });
+    };
+    tick();
+  });
+}
+
+let child;
+
+async function startServer() {
+  const port = await findFreePort();
+  const serverEntry = path.join(__dirname, "..", "dist", "server", "index.mjs");
+  child = spawn(process.execPath, [serverEntry], {
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: "1", PORT: String(port), HOST: "127.0.0.1", NODE_ENV: "production" },
+    stdio: ["ignore", "inherit", "inherit"],
+  });
+  child.on("exit", (code) => {
+    console.error("[ssr] exited with code", code);
+  });
+  const url = `http://127.0.0.1:${port}/`;
+  await waitForServer(url);
+  return url;
+}
+
 app.whenReady().then(async () => {
-  const baseUrl = await serve();
+  let baseUrl;
+  try {
+    baseUrl = await startServer();
+  } catch (err) {
+    console.error("Failed to start SSR server:", err);
+    app.quit();
+    return;
+  }
+
   const win = new BrowserWindow({
     width: 1200,
     height: 820,
@@ -63,16 +77,14 @@ app.whenReady().then(async () => {
   win.webContents.on("did-fail-load", (_e, code, desc, url) => {
     console.error("[did-fail-load]", code, desc, url);
   });
-  win.webContents.on("render-process-gone", (_e, details) => {
-    console.error("[render-process-gone]", details);
-  });
-  win.webContents.on("console-message", (_e, level, msg, line, src) => {
-    console.log(`[renderer:${level}] ${msg} (${src}:${line})`);
-  });
-  win.webContents.openDevTools({ mode: "detach" });
   win.loadURL(baseUrl);
 });
 
 app.on("window-all-closed", () => {
+  if (child) try { child.kill(); } catch {}
   if (process.platform !== "darwin") app.quit();
+});
+
+app.on("before-quit", () => {
+  if (child) try { child.kill(); } catch {}
 });
