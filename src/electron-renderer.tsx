@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
 
+import { PdfToolkitApp } from "@/components/pdf/PdfToolkitApp";
 import { Toaster } from "@/components/ui/sonner";
-import { PdfToolkitApp } from "@/routes/index";
 import "./styles.css";
 
 const root = document.getElementById("root");
