@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 function getRendererPath() {
-  return path.join(__dirname, "..", "dist-electron", "index.html");
+  return path.join(__dirname, "..", "dist-electron", "electron", "index.html");
 }
 
 function renderFailurePage(message, detail = "") {
