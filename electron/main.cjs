@@ -1,10 +1,62 @@
 // Electron main process — loads the static offline renderer from disk.
-const { app, BrowserWindow, shell } = require("electron");
+const { app, BrowserWindow, protocol, shell } = require("electron");
 const fs = require("fs");
 const path = require("path");
 
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: "pdf24",
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+    },
+  },
+]);
+
+function getRendererRoot() {
+  return path.join(__dirname, "..", "dist-electron");
+}
+
 function getRendererPath() {
-  return path.join(__dirname, "..", "dist-electron", "electron", "index.html");
+  return path.join(getRendererRoot(), "electron", "index.html");
+}
+
+function getContentType(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === ".html") return "text/html; charset=utf-8";
+  if (ext === ".js" || ext === ".mjs") return "text/javascript; charset=utf-8";
+  if (ext === ".css") return "text/css; charset=utf-8";
+  if (ext === ".json") return "application/json; charset=utf-8";
+  if (ext === ".svg") return "image/svg+xml";
+  if (ext === ".png") return "image/png";
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+  if (ext === ".ico") return "image/x-icon";
+  return "application/octet-stream";
+}
+
+function registerLocalAppProtocol() {
+  protocol.handle("pdf24", async (request) => {
+    const url = new URL(request.url);
+    const root = getRendererRoot();
+    const requestedPath = decodeURIComponent(url.pathname === "/" ? "/electron/index.html" : url.pathname);
+    const filePath = path.normalize(path.join(root, requestedPath));
+
+    if (!filePath.startsWith(root + path.sep)) {
+      return new Response("Forbidden", { status: 403 });
+    }
+
+    try {
+      const data = await fs.promises.readFile(filePath);
+      return new Response(data, {
+        headers: { "content-type": getContentType(filePath) },
+      });
+    } catch (error) {
+      console.error("[protocol] failed to read", filePath, error);
+      return new Response("Not found", { status: 404 });
+    }
+  });
 }
 
 function renderFailurePage(message, detail = "") {
@@ -22,6 +74,8 @@ function renderFailurePage(message, detail = "") {
 }
 
 app.whenReady().then(async () => {
+  registerLocalAppProtocol();
+
   const win = new BrowserWindow({
     width: 1200,
     height: 820,
@@ -58,7 +112,7 @@ app.whenReady().then(async () => {
     return;
   }
 
-  await win.loadFile(rendererPath);
+  await win.loadURL("pdf24://app/electron/index.html");
 });
 
 app.on("window-all-closed", () => {
