@@ -1,26 +1,32 @@
-## Fix the blank white window in the packaged PDF Buddy desktop app
+## Plan
 
-The screenshot shows the Electron window opens but renders nothing. The previous build enabled DevTools so we could read the actual error, but you're still seeing a white window without console output shared. Rather than keep guessing, I'll fix the two most likely root causes together and rebuild.
+The repeated white screen means the embedded SSR server approach is still failing in the packaged Electron app. Since this PDF toolkit is fully client-side/offline, the most reliable fix is to stop running a web server inside Electron and package a static Electron renderer instead.
 
-### Likely causes
+## What I will change
 
-1. **SPA index doesn't load assets under `file://`** — `dist/client/index.html` (produced by `scripts/make-spa-index.mjs`) may still reference assets with absolute `/assets/...` paths. Under `file://` those resolve to your filesystem root and 404, leaving a blank page.
-2. **Client-side router hits a server-only path on load** — TanStack Start's SSR/loader code can throw in a pure `file://` context, blanking the tree before anything renders.
+1. **Remove SSR from the Electron app path**
+   - Electron will no longer spawn `dist/server/index.mjs`.
+   - It will load a local `file://` HTML app instead, which avoids localhost server startup failures entirely.
 
-### Steps
+2. **Extract the PDF toolkit UI into a reusable component**
+   - Move the current home-page PDF tools into a shared component.
+   - Keep the normal web preview route working by rendering that component from `/`.
+   - Render the same component from a separate Electron-only entry point.
 
-1. Inspect `scripts/make-spa-index.mjs`, `vite.config.ts`, and the generated `dist/client/index.html` to confirm asset paths are relative (`./assets/...`), not absolute. Fix the script to rewrite `src="/…"` and `href="/…"` → `./…` if needed.
-2. Confirm `vite.config.ts` has `base: './'` for the client build (required for `file://`). Add it if missing.
-3. In `electron/main.cjs`, keep DevTools open and add a `console.log` of the resolved `index.html` path so any load failure is obvious.
-4. Rebuild: `npx vite build` → run the SPA index script → repackage with `@electron/packager` → archive to `/mnt/documents/PDF24-Toolkit-linux-x64.tar.gz`.
-5. Give you the extract + run commands. When you open it, DevTools will auto-open — if it's still blank, paste the red errors from the **Console** tab and I'll fix the specific failure.
+3. **Create an Electron-specific static build**
+   - Add an Electron HTML entry and renderer entry.
+   - Build with relative asset paths so scripts/CSS work under `file://`.
+   - Keep all PDF processing offline in the browser window.
 
-### What you'll do after I rebuild
+4. **Rewrite Electron main process for static loading**
+   - Load the built local HTML file directly.
+   - Add a visible fallback screen if loading fails instead of leaving a blank white window.
+   - Log renderer console errors and failed loads to the terminal for debugging.
 
-```bash
-tar xzf PDF24-Toolkit-linux-x64.tar.gz
-cd PDF24-Toolkit-linux-x64
-./PDF24-Toolkit --no-sandbox
-```
+5. **Repackage and verify the archive contents**
+   - Confirm the app archive contains the static HTML and assets.
+   - Produce a new `PDF24-Toolkit-linux-x64.tar.gz` download.
 
-DevTools opens automatically. If the window is still blank, copy the red Console errors into chat.
+## Expected result
+
+This should be much more reliable than the current SSR-in-Electron approach because there is no server process, no random port, no Node SSR runtime, and no localhost page to wait for. The Electron app should open directly to the PDF toolkit UI.
