@@ -60,6 +60,16 @@ app.whenReady().then(async () => {
     shell.openExternal(url);
     return { action: "deny" };
   });
+  win.webContents.on("did-fail-load", (_e, code, desc, url) => {
+    console.error("[did-fail-load]", code, desc, url);
+  });
+  win.webContents.on("render-process-gone", (_e, details) => {
+    console.error("[render-process-gone]", details);
+  });
+  win.webContents.on("console-message", (_e, level, msg, line, src) => {
+    console.log(`[renderer:${level}] ${msg} (${src}:${line})`);
+  });
+  win.webContents.openDevTools({ mode: "detach" });
   win.loadURL(baseUrl);
 });
 
