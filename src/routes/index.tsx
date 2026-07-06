@@ -64,7 +64,7 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
-  component: Index,
+  component: PdfToolkitApp,
 });
 
 function useAction<T extends any[]>(fn: (...args: T) => Promise<void>) {
@@ -463,7 +463,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Index() {
+export function PdfToolkitApp() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50/60 to-white">
       <header className="border-b border-emerald-100 bg-white/70 backdrop-blur">

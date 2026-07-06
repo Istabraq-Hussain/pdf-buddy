@@ -1,67 +1,27 @@
-// Electron main process — starts the bundled TanStack Start Node SSR
-// server on a random localhost port, then loads it in a window.
+// Electron main process — loads the static offline renderer from disk.
 const { app, BrowserWindow, shell } = require("electron");
-const { spawn } = require("child_process");
-const net = require("net");
+const fs = require("fs");
 const path = require("path");
-const http = require("http");
 
-function findFreePort() {
-  return new Promise((resolve, reject) => {
-    const s = net.createServer();
-    s.unref();
-    s.on("error", reject);
-    s.listen(0, "127.0.0.1", () => {
-      const { port } = s.address();
-      s.close(() => resolve(port));
-    });
-  });
+function getRendererPath() {
+  return path.join(__dirname, "..", "dist-electron", "index.html");
 }
 
-function waitForServer(url, timeoutMs = 15000) {
-  const start = Date.now();
-  return new Promise((resolve, reject) => {
-    const tick = () => {
-      const req = http.get(url, (res) => {
-        res.resume();
-        resolve();
-      });
-      req.on("error", () => {
-        if (Date.now() - start > timeoutMs) return reject(new Error("SSR server timeout"));
-        setTimeout(tick, 150);
-      });
-    };
-    tick();
-  });
-}
-
-let child;
-
-async function startServer() {
-  const port = await findFreePort();
-  const serverEntry = path.join(__dirname, "..", "dist", "server", "index.mjs");
-  child = spawn(process.execPath, [serverEntry], {
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: "1", PORT: String(port), HOST: "127.0.0.1", NODE_ENV: "production" },
-    stdio: ["ignore", "inherit", "inherit"],
-  });
-  child.on("exit", (code) => {
-    console.error("[ssr] exited with code", code);
-  });
-  const url = `http://127.0.0.1:${port}/`;
-  await waitForServer(url);
-  return url;
+function renderFailurePage(message, detail = "") {
+  return `<!doctype html><html><head><meta charset="utf-8" />
+    <title>PDF24 Toolkit could not start</title>
+    <style>
+      body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#ecfdf5;color:#064e3b;display:grid;min-height:100vh;place-items:center;padding:32px;box-sizing:border-box}
+      main{max-width:760px;border:1px solid #a7f3d0;background:white;border-radius:12px;padding:28px;box-shadow:0 20px 45px rgba(6,78,59,.12)}
+      h1{margin:0 0 10px;font-size:24px} p{line-height:1.5} pre{overflow:auto;background:#022c22;color:#d1fae5;border-radius:8px;padding:14px;white-space:pre-wrap}
+    </style></head><body><main>
+      <h1>PDF24 Toolkit could not start</h1>
+      <p>${message}</p>
+      ${detail ? `<pre>${detail.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c])}</pre>` : ""}
+    </main></body></html>`;
 }
 
 app.whenReady().then(async () => {
-  let baseUrl;
-  try {
-    baseUrl = await startServer();
-  } catch (err) {
-    console.error("Failed to start SSR server:", err);
-    app.quit();
-    return;
-  }
-
   const win = new BrowserWindow({
     width: 1200,
     height: 820,
@@ -69,22 +29,38 @@ app.whenReady().then(async () => {
     backgroundColor: "#ecfdf5",
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
+
   win.setMenuBarVisibility(false);
+
   win.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: "deny" };
   });
+
+  win.webContents.on("console-message", (_event, level, message, line, sourceId) => {
+    console.log(`[renderer:${level}] ${message} (${sourceId}:${line})`);
+  });
+
   win.webContents.on("did-fail-load", (_e, code, desc, url) => {
     console.error("[did-fail-load]", code, desc, url);
+    win.loadURL(
+      "data:text/html;charset=utf-8," +
+        encodeURIComponent(renderFailurePage("The local app file failed to load.", `${code} ${desc}\n${url}`)),
+    );
   });
-  win.loadURL(baseUrl);
+
+  const rendererPath = getRendererPath();
+  if (!fs.existsSync(rendererPath)) {
+    win.loadURL(
+      "data:text/html;charset=utf-8," +
+        encodeURIComponent(renderFailurePage("The packaged renderer file is missing.", rendererPath)),
+    );
+    return;
+  }
+
+  await win.loadFile(rendererPath);
 });
 
 app.on("window-all-closed", () => {
-  if (child) try { child.kill(); } catch {}
   if (process.platform !== "darwin") app.quit();
-});
-
-app.on("before-quit", () => {
-  if (child) try { child.kill(); } catch {}
 });
