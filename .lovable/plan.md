@@ -1,32 +1,44 @@
-## Plan
+## Goal
 
-The repeated white screen means the embedded SSR server approach is still failing in the packaged Electron app. Since this PDF toolkit is fully client-side/offline, the most reliable fix is to stop running a web server inside Electron and package a static Electron renderer instead.
+Replace the current "Page + Position dropdown" step of the Sign PDF tool with a full-screen placement view where the user sees the actual PDF page and clicks/drags to position the signature exactly.
 
-## What I will change
+## Flow
 
-1. **Remove SSR from the Electron app path**
-   - Electron will no longer spawn `dist/server/index.mjs`.
-   - It will load a local `file://` HTML app instead, which avoids localhost server startup failures entirely.
+1. In the Sign tool card, user picks PDF + draws signature as today.
+2. Instead of Page/Position inputs, click **"Place signature on document →"**.
+3. A full-screen overlay (`SignaturePlacer`) opens:
+   - Left sidebar: page thumbnails (rendered via pdf.js) to pick which page.
+   - Main area: large rendered preview of the selected page.
+   - Signature image overlaid as a draggable/resizable box (drag to move, corner handle to resize). Initial spot = bottom-right.
+   - Toolbar: page selector, "Cancel", "Apply & download signed PDF".
+4. On Apply: compute normalized (x, y, widthPct) for the chosen page and call an extended `signPdf` that accepts exact coordinates, then download.
 
-2. **Extract the PDF toolkit UI into a reusable component**
-   - Move the current home-page PDF tools into a shared component.
-   - Keep the normal web preview route working by rendering that component from `/`.
-   - Render the same component from a separate Electron-only entry point.
+## Technical
 
-3. **Create an Electron-specific static build**
-   - Add an Electron HTML entry and renderer entry.
-   - Build with relative asset paths so scripts/CSS work under `file://`.
-   - Keep all PDF processing offline in the browser window.
+**`src/lib/pdf-tools.ts`** — extend `signPdf` to accept an alternate placement:
+```ts
+signPdf(file, sigDataUrl, {
+  page: number,           // 1-indexed
+  placement: { xPct: number; yPct: number; widthPct: number } // top-left of sig, page-relative
+})
+```
+Keep existing `position` API for backward compat. When `placement` is provided, convert to pdf-lib coords (`y = pageHeight - yPct*pageHeight - sigHeight`).
 
-4. **Rewrite Electron main process for static loading**
-   - Load the built local HTML file directly.
-   - Add a visible fallback screen if loading fails instead of leaving a blank white window.
-   - Log renderer console errors and failed loads to the terminal for debugging.
+**`src/components/pdf/SignaturePlacer.tsx`** (new) — fixed inset-0 overlay:
+- Uses existing dynamic `pdfjs-dist` import (same worker setup as `pdfToImages`) to render pages to canvases.
+- State: `pageIndex`, `box = {xPct, yPct, widthPct}`.
+- Renders selected page canvas; overlays an absolutely-positioned `<img>` of the signature sized/positioned by `box` scaled to canvas rect.
+- Pointer handlers on the sig box for drag; a small handle at bottom-right for resize. Constrain within page bounds.
+- Thumbnails column (lower-res renders) with active highlight.
+- Props: `{ file, signatureDataUrl, onCancel, onConfirm({page, placement}) }`.
 
-5. **Repackage and verify the archive contents**
-   - Confirm the app archive contains the static HTML and assets.
-   - Produce a new `PDF24-Toolkit-linux-x64.tar.gz` download.
+**`src/components/pdf/PdfToolkitApp.tsx`** — update `Sign()`:
+- Remove Page# input and Position dropdown.
+- Add "Place signature on document" button (disabled until file + signature present).
+- On click, mount `<SignaturePlacer .../>`; on confirm, call `signPdf` with `placement`, download `signed.pdf`, close overlay.
 
-## Expected result
+## Out of scope
 
-This should be much more reliable than the current SSR-in-Electron approach because there is no server process, no random port, no Node SSR runtime, and no localhost page to wait for. The Electron app should open directly to the PDF toolkit UI.
+- Multiple signatures per document.
+- Typed/uploaded signatures (drawing pad stays as-is).
+- Rotation of the signature.
