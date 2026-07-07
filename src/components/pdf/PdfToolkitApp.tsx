@@ -28,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FileInput } from "@/components/pdf/FileInput";
 import { ToolCard } from "@/components/pdf/ToolCard";
 import { SignaturePad } from "@/components/pdf/SignaturePad";
+import { SignaturePlacer } from "@/components/pdf/SignaturePlacer";
 import {
   addPageNumbers,
   addWatermark,
@@ -346,54 +347,63 @@ function Metadata() {
 function Sign() {
   const [file, setFile] = useState<File | null>(null);
   const [sig, setSig] = useState<string | null>(null);
-  const [page, setPage] = useState<number>(0);
   const [pageCount, setPageCount] = useState<number | null>(null);
-  const [pos, setPos] = useState<"bottom-right" | "bottom-left" | "bottom-center">("bottom-right");
-  const a = useAction(async () => {
-    if (!file) throw new Error("Choose a PDF.");
-    if (!sig) throw new Error("Draw your signature first.");
-    const bytes = await signPdf(file, sig, { page, position: pos });
-    download(bytes, "signed.pdf");
-    toast.success("Signed!");
-  });
+  const [placing, setPlacing] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const openPlacer = () => {
+    if (!file) return toast.error("Choose a PDF.");
+    if (!sig) return toast.error("Draw your signature first.");
+    setPlacing(true);
+  };
+
+  const handleConfirm = async (result: { page: number; placement: { xPct: number; yPct: number; widthPct: number } }) => {
+    if (!file || !sig) return;
+    setPlacing(false);
+    setBusy(true);
+    try {
+      const bytes = await signPdf(file, sig, { page: result.page, placement: result.placement });
+      download(bytes, "signed.pdf");
+      toast.success("Signed!");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Something went wrong");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <ToolCard icon={<PenLine className="h-5 w-5" />} title="Sign PDF" description="Draw a signature and stamp it on a page.">
-      <FileInput
-        onFiles={async (fs) => {
-          const f = fs[0] ?? null;
-          setFile(f);
-          setPageCount(f ? await getPageCount(f) : null);
-        }}
-      />
-      {pageCount !== null && (
-        <div className="text-xs text-emerald-700">{pageCount} pages</div>
+    <>
+      <ToolCard icon={<PenLine className="h-5 w-5" />} title="Sign PDF" description="Draw a signature and place it exactly where you want.">
+        <FileInput
+          onFiles={async (fs) => {
+            const f = fs[0] ?? null;
+            setFile(f);
+            setPageCount(f ? await getPageCount(f) : null);
+          }}
+        />
+        {pageCount !== null && (
+          <div className="text-xs text-emerald-700">{pageCount} pages</div>
+        )}
+        <SignaturePad onChange={setSig} />
+        <Button
+          onClick={openPlacer}
+          disabled={busy || !file || !sig}
+          className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenLine className="h-4 w-4" />}
+          Place signature on document →
+        </Button>
+      </ToolCard>
+      {placing && file && sig && (
+        <SignaturePlacer
+          file={file}
+          signatureDataUrl={sig}
+          onCancel={() => setPlacing(false)}
+          onConfirm={handleConfirm}
+        />
       )}
-      <SignaturePad onChange={setSig} />
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <Label className="text-xs">Page (0 = last)</Label>
-          <Input
-            type="number"
-            min={0}
-            value={page}
-            onChange={(e) => setPage(parseInt(e.target.value || "0", 10))}
-          />
-        </div>
-        <div>
-          <Label className="text-xs">Position</Label>
-          <select
-            value={pos}
-            onChange={(e) => setPos(e.target.value as typeof pos)}
-            className="mt-0.5 flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-          >
-            <option value="bottom-right">Bottom right</option>
-            <option value="bottom-center">Bottom center</option>
-            <option value="bottom-left">Bottom left</option>
-          </select>
-        </div>
-      </div>
-      <RunButton onClick={() => a.run()} busy={a.busy}>Sign & download</RunButton>
-    </ToolCard>
+    </>
   );
 }
 

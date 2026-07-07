@@ -230,6 +230,8 @@ export async function signPdf(
     page: number; // 1-indexed; 0 or negative means last page
     position?: "bottom-right" | "bottom-left" | "bottom-center";
     widthPct?: number; // width relative to page width (0-1)
+    // Exact placement (top-left of signature, page-relative 0..1). Overrides `position`.
+    placement?: { xPct: number; yPct: number; widthPct: number };
   } = { page: 0 },
 ): Promise<Uint8Array> {
   const doc = await PDFDocument.load(await readFile(file), { ignoreEncryption: true });
@@ -241,19 +243,28 @@ export async function signPdf(
 
   const pngBytes = Uint8Array.from(atob(signatureDataUrl.split(",")[1]), (c) => c.charCodeAt(0));
   const png = await doc.embedPng(pngBytes);
-  const targetW = width * (opts.widthPct ?? 0.35);
-  const scale = targetW / png.width;
-  const w = png.width * scale;
-  const h = png.height * scale;
-  const margin = 40;
-  const pos = opts.position ?? "bottom-right";
-  const x =
-    pos === "bottom-left"
-      ? margin
-      : pos === "bottom-center"
-        ? (width - w) / 2
-        : width - w - margin;
-  const y = margin;
+
+  let x: number, y: number, w: number, h: number;
+  if (opts.placement) {
+    w = width * opts.placement.widthPct;
+    h = (png.height / png.width) * w;
+    x = width * opts.placement.xPct;
+    y = height - opts.placement.yPct * height - h;
+  } else {
+    const targetW = width * (opts.widthPct ?? 0.35);
+    const scale = targetW / png.width;
+    w = png.width * scale;
+    h = png.height * scale;
+    const margin = 40;
+    const pos = opts.position ?? "bottom-right";
+    x =
+      pos === "bottom-left"
+        ? margin
+        : pos === "bottom-center"
+          ? (width - w) / 2
+          : width - w - margin;
+    y = margin;
+  }
   page.drawImage(png, { x, y, width: w, height: h });
   return await doc.save();
 }
