@@ -28,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FileInput } from "@/components/pdf/FileInput";
 import { ToolCard } from "@/components/pdf/ToolCard";
 import { SignaturePad } from "@/components/pdf/SignaturePad";
+import { SignaturePlacer } from "@/components/pdf/SignaturePlacer";
 import {
   addPageNumbers,
   addWatermark,
