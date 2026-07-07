@@ -16,6 +16,7 @@ import {
   Download,
   Loader2,
   PenLine,
+  FileType2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,7 +41,10 @@ import {
   getPageCount,
   imagesToPdf,
   mergePdfs,
+  pdfToDoc,
+  pdfToDocx,
   pdfToImages,
+  pdfToOdt,
   reorderPages,
   rotatePdf,
   setMetadata,
@@ -318,6 +322,55 @@ function ExtractText() {
   );
 }
 
+function PdfToDoc() {
+  const [file, setFile] = useState<File | null>(null);
+  const [fmt, setFmt] = useState<"docx" | "doc" | "odt">("docx");
+  const a = useAction(async () => {
+    if (!file) throw new Error("Choose a PDF.");
+    let blob: Blob;
+    let mime: string;
+    if (fmt === "docx") {
+      blob = await pdfToDocx(file);
+      mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    } else if (fmt === "doc") {
+      blob = await pdfToDoc(file);
+      mime = "application/msword";
+    } else {
+      blob = await pdfToOdt(file);
+      mime = "application/vnd.oasis.opendocument.text";
+    }
+    download(blob, `converted.${fmt}`, mime);
+    toast.success(`Exported .${fmt}`);
+  });
+  return (
+    <ToolCard
+      icon={<FileType2 className="h-5 w-5" />}
+      title="PDF → Word / ODT"
+      description="Convert text to .docx, .doc, or .odt."
+    >
+      <FileInput onFiles={(fs) => setFile(fs[0] ?? null)} />
+      <div>
+        <Label className="text-xs">Format</Label>
+        <div className="flex gap-2">
+          {(["docx", "doc", "odt"] as const).map((v) => (
+            <Button
+              key={v}
+              size="sm"
+              variant={fmt === v ? "default" : "outline"}
+              onClick={() => setFmt(v)}
+              className={fmt === v ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+            >
+              .{v}
+            </Button>
+          ))}
+        </div>
+      </div>
+      <p className="text-[11px] text-emerald-700/70">Text only — images and original layout are not preserved.</p>
+      <RunButton onClick={() => a.run()} busy={a.busy}>Convert & download</RunButton>
+    </ToolCard>
+  );
+}
+
 function Metadata() {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
@@ -416,6 +469,7 @@ const tools = [
   { id: "images-to-pdf", label: "Images → PDF", icon: <ImageIcon className="h-3.5 w-3.5" /> },
   { id: "pdf-to-images", label: "PDF → Images", icon: <FileImage className="h-3.5 w-3.5" /> },
   { id: "extract-text", label: "Extract text", icon: <Type className="h-3.5 w-3.5" /> },
+  { id: "pdf-to-doc", label: "PDF → Word", icon: <FileType2 className="h-3.5 w-3.5" /> },
   { id: "sign", label: "Sign PDF", icon: <PenLine className="h-3.5 w-3.5" /> },
   { id: "watermark", label: "Watermark", icon: <Droplets className="h-3.5 w-3.5" /> },
   { id: "page-numbers", label: "Page numbers", icon: <Hash className="h-3.5 w-3.5" /> },
@@ -493,6 +547,7 @@ export function PdfToolkitApp() {
             <div id="images-to-pdf"><ImagesToPdf /></div>
             <div id="pdf-to-images"><PdfToImages /></div>
             <div id="extract-text"><ExtractText /></div>
+            <div id="pdf-to-doc"><PdfToDoc /></div>
           </div>
         </div>
 

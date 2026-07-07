@@ -1,5 +1,7 @@
 // Client-side PDF tools. Works fully offline once the page is loaded.
 import { PDFDocument, degrees, rgb, StandardFonts } from "pdf-lib";
+import { Document as DocxDocument, Packer, Paragraph, TextRun, PageBreak } from "docx";
+import { zipSync, strToU8 } from "fflate";
 
 export async function readFile(file: File): Promise<Uint8Array> {
   return new Uint8Array(await file.arrayBuffer());
@@ -267,4 +269,105 @@ export async function signPdf(
   }
   page.drawImage(png, { x, y, width: w, height: h });
   return await doc.save();
+}
+
+// ---------- PDF → Word / ODT (text-only) ----------
+
+async function extractParagraphsPerPage(file: File): Promise<string[][]> {
+  const pdfjsLib: any = await import("pdfjs-dist");
+  const workerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+  const data = await readFile(file);
+  const pdf = await pdfjsLib.getDocument({ data }).promise;
+  const pages: string[][] = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    // Group by y-coordinate into lines
+    const lines = new Map<number, { x: number; s: string }[]>();
+    for (const it of content.items as any[]) {
+      if (!it.str) continue;
+      const y = Math.round(it.transform[5]);
+      const x = it.transform[4];
+      if (!lines.has(y)) lines.set(y, []);
+      lines.get(y)!.push({ x, s: it.str });
+    }
+    const sorted = [...lines.entries()].sort((a, b) => b[0] - a[0]);
+    const paras: string[] = [];
+    for (const [, parts] of sorted) {
+      parts.sort((a, b) => a.x - b.x);
+      const line = parts.map((p) => p.s).join(" ").replace(/\s+/g, " ").trim();
+      if (line) paras.push(line);
+    }
+    pages.push(paras);
+  }
+  return pages;
+}
+
+export async function pdfToDocx(file: File): Promise<Blob> {
+  const pages = await extractParagraphsPerPage(file);
+  const children: Paragraph[] = [];
+  pages.forEach((paras, idx) => {
+    if (idx > 0) {
+      children.push(new Paragraph({ children: [new PageBreak()] }));
+    }
+    for (const p of paras) {
+      children.push(new Paragraph({ children: [new TextRun(p)] }));
+    }
+  });
+  const doc = new DocxDocument({ sections: [{ children }] });
+  return await Packer.toBlob(doc);
+}
+
+function escapeXml(s: string): string {
+  return s.replace(/[<>&"']/g, (c) =>
+    c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === "&" ? "&amp;" : c === '"' ? "&quot;" : "&apos;",
+  );
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[<>&]/g, (c) => (c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&amp;"));
+}
+
+export async function pdfToDoc(file: File): Promise<Blob> {
+  const pages = await extractParagraphsPerPage(file);
+  const body = pages
+    .map(
+      (paras) =>
+        `<div>${paras.map((p) => `<p>${escapeHtml(p)}</p>`).join("")}</div>`,
+    )
+    .join('<br style="page-break-before:always" clear="all">');
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>Document</title></head><body>${body}</body></html>`;
+  return new Blob([html], { type: "application/msword" });
+}
+
+export async function pdfToOdt(file: File): Promise<Blob> {
+  const pages = await extractParagraphsPerPage(file);
+  const paras: string[] = [];
+  pages.forEach((page, idx) => {
+    const style = idx > 0 ? ' text:style-name="PageBreak"' : "";
+    page.forEach((p, i) => {
+      const s = i === 0 && idx > 0 ? style : "";
+      paras.push(`<text:p${s}>${escapeXml(p)}</text:p>`);
+    });
+    if (page.length === 0 && idx > 0) paras.push(`<text:p${style}/>`);
+  });
+  const content = `<?xml version="1.0" encoding="UTF-8"?>
+<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" office:version="1.2">
+<office:automatic-styles>
+<style:style style:name="PageBreak" style:family="paragraph" style:parent-style-name="Standard"><style:paragraph-properties fo:break-before="page"/></style:style>
+</office:automatic-styles>
+<office:body><office:text>${paras.join("")}</office:text></office:body>
+</office:document-content>`;
+  const manifest = `<?xml version="1.0" encoding="UTF-8"?>
+<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.2">
+<manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.text"/>
+<manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/>
+</manifest:manifest>`;
+  const zipped = zipSync({
+    mimetype: [strToU8("application/vnd.oasis.opendocument.text"), { level: 0 }],
+    "content.xml": strToU8(content),
+    "META-INF/manifest.xml": strToU8(manifest),
+  });
+  return new Blob([zipped.buffer as ArrayBuffer], { type: "application/vnd.oasis.opendocument.text" });
 }
