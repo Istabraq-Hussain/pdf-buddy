@@ -469,6 +469,7 @@ const tools = [
   { id: "images-to-pdf", label: "Images → PDF", icon: <ImageIcon className="h-3.5 w-3.5" /> },
   { id: "pdf-to-images", label: "PDF → Images", icon: <FileImage className="h-3.5 w-3.5" /> },
   { id: "extract-text", label: "Extract text", icon: <Type className="h-3.5 w-3.5" /> },
+  { id: "pdf-to-doc", label: "PDF → Word", icon: <FileType2 className="h-3.5 w-3.5" /> },
   { id: "sign", label: "Sign PDF", icon: <PenLine className="h-3.5 w-3.5" /> },
   { id: "watermark", label: "Watermark", icon: <Droplets className="h-3.5 w-3.5" /> },
   { id: "page-numbers", label: "Page numbers", icon: <Hash className="h-3.5 w-3.5" /> },
@@ -546,6 +547,7 @@ export function PdfToolkitApp() {
             <div id="images-to-pdf"><ImagesToPdf /></div>
             <div id="pdf-to-images"><PdfToImages /></div>
             <div id="extract-text"><ExtractText /></div>
+            <div id="pdf-to-doc"><PdfToDoc /></div>
           </div>
         </div>
 
