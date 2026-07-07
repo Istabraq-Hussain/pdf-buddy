@@ -370,6 +370,8 @@ function PdfToDoc() {
     </ToolCard>
   );
 }
+
+function Metadata() {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
