@@ -16,6 +16,7 @@ import {
   Download,
   Loader2,
   PenLine,
+  FileType2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,7 +41,10 @@ import {
   getPageCount,
   imagesToPdf,
   mergePdfs,
+  pdfToDoc,
+  pdfToDocx,
   pdfToImages,
+  pdfToOdt,
   reorderPages,
   rotatePdf,
   setMetadata,
