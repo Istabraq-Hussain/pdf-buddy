@@ -1,26 +1,33 @@
 ## Goal
 
-Repackage the working Linux Electron app so it includes the new full-screen interactive signature placement mode.
+Add a new tool "PDF to Word / ODT" that converts an uploaded PDF into `.doc`, `.docx`, or `.odt`, fully offline in the browser and in the Electron build.
 
-## Steps
+## Approach
 
-1. Run `npx vite build` to produce a fresh `dist/` bundle containing:
-   - `SignaturePlacer.tsx` (draggable/resizable signature overlay with page thumbnails)
-   - Updated `signPdf` in `src/lib/pdf-tools.ts` with `placement` support
-   - Updated `PdfToolkitApp.tsx` with the "Place signature on document →" button
+Real layout-preserving PDF → Word conversion needs LibreOffice, which isn't bundled. So the tool does a **text-based conversion**:
 
-2. Re-run `npx @electron/packager` with the same options as the previous working build (`--platform=linux --arch=x64`, ignoring `src/`, `public/`, `electron-release/`, `node_modules`).
+1. Reuse the existing `pdfjs-dist` pipeline (like `extractText`) to pull text per page, grouping items by y-coordinate into lines/paragraphs and marking page breaks.
+2. Emit one of three formats:
+   - **`.docx`** — built with the `docx` npm package (`Document`, `Paragraph`, `TextRun`, `PageBreak`) via `Packer.toBlob()`.
+   - **`.doc`** — a Word-compatible HTML file served with `application/msword` MIME + `.doc` extension. Word, Google Docs and LibreOffice all open it correctly. No extra dependency needed.
+   - **`.odt`** — a minimal valid OpenDocument Text zip (`mimetype` + `content.xml` + `META-INF/manifest.xml`) built with `fflate`.
 
-3. Archive: `tar czf /mnt/documents/PDF24-Toolkit-linux-x64.tar.gz -C /dev-server/electron-release PDF24-Toolkit-linux-x64/`.
+All outputs contain text only — no images, fonts, or original layout. The card will say so.
 
-4. Sanity check the archive lists the `PDF24-Toolkit` binary and updated `resources/app/dist/` assets.
+## Files to change
+
+- `bun add docx fflate`
+- `src/lib/pdf-tools.ts` — add `pdfToDocx(file)`, `pdfToDoc(file)`, `pdfToOdt(file)` sharing an `extractParagraphsPerPage(file)` helper that reuses the pdfjs worker setup already in `extractText`.
+- `src/components/pdf/PdfToolkitApp.tsx` — add a `ToolCard` "PDF to Word / ODT" with a file input, a format selector (`.docx` / `.doc` / `.odt`), a Convert button, and a short "text only — no images/layout" note.
+
+No changes to routing, signature tool, or Electron config.
+
+## Rebuild
+
+After implementation I will also rebuild the Linux Electron package the same way as last time, so the downloadable app gets the new tool.
 
 ## Not doing
 
-- No code changes to the signature feature itself (already implemented).
-- No macOS/Windows builds unless you ask.
-- No changes to Vite/Electron config — reusing the setup that worked last time.
-
-## Result
-
-You download the same `PDF24-Toolkit-linux-x64.tar.gz`, extract, and run `./PDF24-Toolkit --no-sandbox` — the Sign tool now opens the new placement screen.
+- No layout-preserving conversion (would require bundling LibreOffice).
+- No image extraction into the output.
+- No OCR of scanned PDFs.
