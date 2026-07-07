@@ -322,7 +322,54 @@ function ExtractText() {
   );
 }
 
-function Metadata() {
+function PdfToDoc() {
+  const [file, setFile] = useState<File | null>(null);
+  const [fmt, setFmt] = useState<"docx" | "doc" | "odt">("docx");
+  const a = useAction(async () => {
+    if (!file) throw new Error("Choose a PDF.");
+    let blob: Blob;
+    let mime: string;
+    if (fmt === "docx") {
+      blob = await pdfToDocx(file);
+      mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    } else if (fmt === "doc") {
+      blob = await pdfToDoc(file);
+      mime = "application/msword";
+    } else {
+      blob = await pdfToOdt(file);
+      mime = "application/vnd.oasis.opendocument.text";
+    }
+    download(blob, `converted.${fmt}`, mime);
+    toast.success(`Exported .${fmt}`);
+  });
+  return (
+    <ToolCard
+      icon={<FileType2 className="h-5 w-5" />}
+      title="PDF → Word / ODT"
+      description="Convert text to .docx, .doc, or .odt."
+    >
+      <FileInput onFiles={(fs) => setFile(fs[0] ?? null)} />
+      <div>
+        <Label className="text-xs">Format</Label>
+        <div className="flex gap-2">
+          {(["docx", "doc", "odt"] as const).map((v) => (
+            <Button
+              key={v}
+              size="sm"
+              variant={fmt === v ? "default" : "outline"}
+              onClick={() => setFmt(v)}
+              className={fmt === v ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+            >
+              .{v}
+            </Button>
+          ))}
+        </div>
+      </div>
+      <p className="text-[11px] text-emerald-700/70">Text only — images and original layout are not preserved.</p>
+      <RunButton onClick={() => a.run()} busy={a.busy}>Convert & download</RunButton>
+    </ToolCard>
+  );
+}
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
