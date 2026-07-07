@@ -1,5 +1,7 @@
 // Client-side PDF tools. Works fully offline once the page is loaded.
 import { PDFDocument, degrees, rgb, StandardFonts } from "pdf-lib";
+import { Document as DocxDocument, Packer, Paragraph, TextRun, PageBreak } from "docx";
+import { zipSync, strToU8 } from "fflate";
 
 export async function readFile(file: File): Promise<Uint8Array> {
   return new Uint8Array(await file.arrayBuffer());
