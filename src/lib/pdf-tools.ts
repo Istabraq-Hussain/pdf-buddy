@@ -1,4 +1,34 @@
 // Client-side PDF tools. Works fully offline once the page is loaded.
+
+// Polyfill for newer Map methods used by pdfjs-dist in older Chromium/Electron builds.
+if (typeof Map !== "undefined" && typeof window !== "undefined") {
+  const mapProto = Map.prototype as unknown as Record<string, unknown>;
+  if (typeof mapProto.getOrInsertComputed !== "function") {
+    Object.defineProperty(mapProto, "getOrInsertComputed", {
+      value: function getOrInsertComputed<T>(this: Map<unknown, T>, key: unknown, callback: () => T): T {
+        if (!this.has(key)) {
+          this.set(key, callback());
+        }
+        return this.get(key) as T;
+      },
+      writable: true,
+      configurable: true,
+    });
+  }
+  if (typeof mapProto.getOrInsert !== "function") {
+    Object.defineProperty(mapProto, "getOrInsert", {
+      value: function getOrInsert<T>(this: Map<unknown, T>, key: unknown, value: T): T {
+        if (!this.has(key)) {
+          this.set(key, value);
+        }
+        return this.get(key) as T;
+      },
+      writable: true,
+      configurable: true,
+    });
+  }
+}
+
 import { PDFDocument, degrees, rgb, StandardFonts } from "pdf-lib";
 import { Document as DocxDocument, Packer, Paragraph, TextRun, PageBreak } from "docx";
 import { zipSync, strToU8 } from "fflate";
