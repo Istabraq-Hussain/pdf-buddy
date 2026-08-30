@@ -190,20 +190,30 @@ type Preset = { dpi: number; quality: number; gray?: boolean };
 
 const COMPRESSION_PRESETS: Record<CompressionLevel, Preset[]> = {
   minimum: [], // lossless: object streams only
-  low: [{ dpi: 150, quality: 0.8 }],
+  low: [
+    { dpi: 140, quality: 0.72 },
+    { dpi: 120, quality: 0.62 },
+  ],
   medium: [
-    { dpi: 120, quality: 0.6 },
-    { dpi: 96, quality: 0.5 },
+    { dpi: 110, quality: 0.55 },
+    { dpi: 90, quality: 0.45 },
   ],
   strong: [
-    { dpi: 96, quality: 0.45 },
-    { dpi: 80, quality: 0.35 },
+    { dpi: 90, quality: 0.38 },
+    { dpi: 72, quality: 0.28 },
   ],
   maximum: [
-    { dpi: 72, quality: 0.3, gray: true },
-    { dpi: 60, quality: 0.22, gray: true },
+    { dpi: 72, quality: 0.25, gray: true },
+    { dpi: 54, quality: 0.16, gray: true },
+    { dpi: 42, quality: 0.1, gray: true },
   ],
 };
+
+const EMERGENCY_PRESETS: Preset[] = [
+  { dpi: 60, quality: 0.2 },
+  { dpi: 48, quality: 0.14, gray: true },
+  { dpi: 36, quality: 0.08, gray: true },
+];
 
 async function rasterizeToPdf(
   pdfjsLib: any,
@@ -213,34 +223,46 @@ async function rasterizeToPdf(
   const pdf = await pdfjsLib.getDocument({ data: data.slice(0) }).promise;
   const out = await PDFDocument.create();
   const scale = preset.dpi / 72;
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const base = page.getViewport({ scale: 1 });
-    const viewport = page.getViewport({ scale });
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.floor(viewport.width));
-    canvas.height = Math.max(1, Math.floor(viewport.height));
-    const ctx = canvas.getContext("2d")!;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    await page.render({ canvasContext: ctx, viewport, canvas }).promise;
-    if (preset.gray) {
-      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const d = img.data;
-      for (let p = 0; p < d.length; p += 4) {
-        const v = (d[p] * 0.299 + d[p + 1] * 0.587 + d[p + 2] * 0.114) | 0;
-        d[p] = d[p + 1] = d[p + 2] = v;
+  try {
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const base = page.getViewport({ scale: 1 });
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.floor(viewport.width));
+      canvas.height = Math.max(1, Math.floor(viewport.height));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("This system could not create an image canvas.");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+      if (preset.gray) {
+        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const d = img.data;
+        for (let p = 0; p < d.length; p += 4) {
+          const v = (d[p] * 0.299 + d[p + 1] * 0.587 + d[p + 2] * 0.114) | 0;
+          d[p] = d[p + 1] = d[p + 2] = v;
+        }
+        ctx.putImageData(img, 0, 0);
       }
-      ctx.putImageData(img, 0, 0);
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob(
+          (value) => value ? resolve(value) : reject(new Error("JPEG encoding failed.")),
+          "image/jpeg",
+          preset.quality,
+        ),
+      );
+      const jpg = await out.embedJpg(new Uint8Array(await blob.arrayBuffer()));
+      const outputPage = out.addPage([base.width, base.height]);
+      outputPage.drawImage(jpg, { x: 0, y: 0, width: base.width, height: base.height });
+      canvas.width = 1;
+      canvas.height = 1;
+      page.cleanup();
     }
-    const blob: Blob = await new Promise((r) =>
-      canvas.toBlob((b) => r(b!), "image/jpeg", preset.quality),
-    );
-    const jpg = await out.embedJpg(new Uint8Array(await blob.arrayBuffer()));
-    const p = out.addPage([base.width, base.height]);
-    p.drawImage(jpg, { x: 0, y: 0, width: base.width, height: base.height });
+    return await out.save({ useObjectStreams: true, addDefaultPage: false });
+  } finally {
+    await pdf.destroy();
   }
-  return await out.save({ useObjectStreams: true, addDefaultPage: false });
 }
 
 export async function compressPdf(
@@ -260,13 +282,37 @@ export async function compressPdf(
     const pdfjsLib: any = await import("pdfjs-dist");
     const workerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
     pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+    let successfulAttempts = 0;
+    let lastError: unknown;
     for (const preset of presets) {
       try {
         const candidate = await rasterizeToPdf(pdfjsLib, data, preset);
+        successfulAttempts += 1;
         if (candidate.byteLength < best.byteLength) best = candidate;
-      } catch {
-        // ignore a failing candidate and keep the best so far
+      } catch (error) {
+        lastError = error;
       }
+    }
+
+    // If the selected passes did not beat the source, continue with progressively
+    // smaller page images. This guarantees a real reduction whenever the PDF can
+    // be rendered, instead of returning the unchanged input without explanation.
+    if (best.byteLength >= originalSize) {
+      for (const preset of EMERGENCY_PRESETS) {
+        try {
+          const candidate = await rasterizeToPdf(pdfjsLib, data, preset);
+          successfulAttempts += 1;
+          if (candidate.byteLength < best.byteLength) best = candidate;
+          if (best.byteLength < originalSize * 0.98) break;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+    }
+
+    if (successfulAttempts === 0) {
+      const detail = lastError instanceof Error ? ` ${lastError.message}` : "";
+      throw new Error(`The PDF pages could not be compressed.${detail}`);
     }
   }
 
