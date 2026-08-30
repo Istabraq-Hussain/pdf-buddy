@@ -244,7 +244,7 @@ async function rasterizeToPdf(
     }
     return await out.save({ useObjectStreams: true, addDefaultPage: false });
   } finally {
-    await pdf.destroy();
+    if (typeof pdf.destroy === "function") await pdf.destroy();
   }
 }
 
@@ -252,7 +252,6 @@ export async function compressPdf(
   file: File,
   level: CompressionLevel = "low",
 ): Promise<{ bytes: Uint8Array; originalSize: number; newSize: number; level: CompressionLevel }> {
-  console.debug("[compress] start", file.name, level);
   const data = await readFile(file);
   const originalSize = data.byteLength;
 
@@ -275,7 +274,6 @@ export async function compressPdf(
         if (candidate.byteLength < best.byteLength) best = candidate;
       } catch (error) {
         lastError = error;
-        console.error("[compress] preset failed", preset, error);
       }
     }
 
@@ -289,7 +287,6 @@ export async function compressPdf(
         if (candidate.byteLength < best.byteLength) best = candidate;
       } catch (error) {
         lastError = error;
-        console.error("[compress] emergency preset failed", error);
       }
     }
 
