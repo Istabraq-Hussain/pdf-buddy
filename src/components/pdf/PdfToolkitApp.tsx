@@ -310,8 +310,12 @@ function Compress() {
     const { bytes, originalSize, newSize } = await compressPdf(file, level);
     download(bytes, "compressed.pdf");
     setResult({ before: originalSize, after: newSize });
-    const saved = Math.max(0, Math.round((1 - newSize / originalSize) * 100));
-    toast.success(`Compressed — ${saved}% smaller.`);
+    const saved = Math.round((1 - newSize / originalSize) * 100);
+    if (saved < 1) {
+      toast.info("This PDF is already optimized — try a stronger level for more reduction.");
+    } else {
+      toast.success(`Compressed — ${saved}% smaller.`);
+    }
   });
   const active = COMPRESSION_LEVELS.find((l) => l.id === level)!;
   return (
