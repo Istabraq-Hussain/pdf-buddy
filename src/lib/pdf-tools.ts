@@ -190,30 +190,13 @@ type Preset = { dpi: number; quality: number; gray?: boolean };
 
 const COMPRESSION_PRESETS: Record<CompressionLevel, Preset[]> = {
   minimum: [], // lossless: object streams only
-  low: [
-    { dpi: 140, quality: 0.72 },
-    { dpi: 120, quality: 0.62 },
-  ],
-  medium: [
-    { dpi: 110, quality: 0.55 },
-    { dpi: 90, quality: 0.45 },
-  ],
-  strong: [
-    { dpi: 90, quality: 0.38 },
-    { dpi: 72, quality: 0.28 },
-  ],
-  maximum: [
-    { dpi: 72, quality: 0.25, gray: true },
-    { dpi: 54, quality: 0.16, gray: true },
-    { dpi: 42, quality: 0.1, gray: true },
-  ],
+  low: [{ dpi: 120, quality: 0.62 }],
+  medium: [{ dpi: 90, quality: 0.45 }],
+  strong: [{ dpi: 72, quality: 0.28 }],
+  maximum: [{ dpi: 42, quality: 0.1, gray: true }],
 };
 
-const EMERGENCY_PRESETS: Preset[] = [
-  { dpi: 60, quality: 0.2 },
-  { dpi: 48, quality: 0.14, gray: true },
-  { dpi: 36, quality: 0.08, gray: true },
-];
+const EMERGENCY_PRESET: Preset = { dpi: 32, quality: 0.06, gray: true };
 
 async function rasterizeToPdf(
   pdfjsLib: any,
@@ -298,15 +281,12 @@ export async function compressPdf(
     // smaller page images. This guarantees a real reduction whenever the PDF can
     // be rendered, instead of returning the unchanged input without explanation.
     if (best.byteLength >= originalSize) {
-      for (const preset of EMERGENCY_PRESETS) {
-        try {
-          const candidate = await rasterizeToPdf(pdfjsLib, data, preset);
-          successfulAttempts += 1;
-          if (candidate.byteLength < best.byteLength) best = candidate;
-          if (best.byteLength < originalSize * 0.98) break;
-        } catch (error) {
-          lastError = error;
-        }
+      try {
+        const candidate = await rasterizeToPdf(pdfjsLib, data, EMERGENCY_PRESET);
+        successfulAttempts += 1;
+        if (candidate.byteLength < best.byteLength) best = candidate;
+      } catch (error) {
+        lastError = error;
       }
     }
 
