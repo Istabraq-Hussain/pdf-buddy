@@ -293,9 +293,11 @@ function PageNumbers() {
 }
 
 const COMPRESSION_LEVELS: { id: CompressionLevel; label: string; hint: string }[] = [
-  { id: "low", label: "Low", hint: "Lossless — keeps text sharp, smallest savings." },
+  { id: "minimum", label: "Minimum", hint: "Lossless — keeps text sharp, smallest savings." },
+  { id: "low", label: "Low", hint: "Very light re-encode — high quality, modest savings." },
   { id: "medium", label: "Medium", hint: "Balanced — pages re-encoded at good quality." },
-  { id: "strong", label: "Strong", hint: "Smallest file — noticeably lower page quality." },
+  { id: "strong", label: "Strong", hint: "Smaller file — lower page quality." },
+  { id: "maximum", label: "Maximum", hint: "Smallest possible — heavy quality loss." },
 ];
 
 function Compress() {
@@ -316,13 +318,13 @@ function Compress() {
     <ToolCard icon={<Minimize2 className="h-5 w-5" />} title="Compress" description="Choose a compression level.">
       <FileInput onFiles={(fs) => { setFile(fs[0] ?? null); setResult(null); }} />
       <div className="space-y-1.5">
-        <div className="grid grid-cols-3 gap-1 rounded-md border border-emerald-200 bg-emerald-50/50 p-1">
+        <div className="grid grid-cols-5 gap-1 rounded-md border border-emerald-200 bg-emerald-50/50 p-1">
           {COMPRESSION_LEVELS.map((l) => (
             <button
               key={l.id}
               type="button"
               onClick={() => setLevel(l.id)}
-              className={`rounded px-2 py-1.5 text-xs font-medium transition ${
+              className={`rounded px-1 py-1.5 text-[11px] font-medium transition ${
                 level === l.id
                   ? "bg-emerald-600 text-emerald-50 shadow-sm"
                   : "text-emerald-800 hover:bg-emerald-100"
