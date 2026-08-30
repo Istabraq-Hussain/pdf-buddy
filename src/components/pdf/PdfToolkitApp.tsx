@@ -34,6 +34,8 @@ import {
   addPageNumbers,
   addWatermark,
   compressPdf,
+  formatBytes,
+  type CompressionLevel,
   deletePages,
   download,
   extractEachPage,
