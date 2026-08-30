@@ -2,8 +2,9 @@
 
 // Polyfill for newer Map methods used by pdfjs-dist in older Chromium/Electron builds.
 if (typeof Map !== "undefined" && typeof window !== "undefined") {
-  if (!Map.prototype.getOrInsertComputed) {
-    Object.defineProperty(Map.prototype, "getOrInsertComputed", {
+  const mapProto = Map.prototype as unknown as Record<string, unknown>;
+  if (typeof mapProto.getOrInsertComputed !== "function") {
+    Object.defineProperty(mapProto, "getOrInsertComputed", {
       value: function getOrInsertComputed<T>(this: Map<unknown, T>, key: unknown, callback: () => T): T {
         if (!this.has(key)) {
           this.set(key, callback());
@@ -14,8 +15,8 @@ if (typeof Map !== "undefined" && typeof window !== "undefined") {
       configurable: true,
     });
   }
-  if (!Map.prototype.getOrInsert) {
-    Object.defineProperty(Map.prototype, "getOrInsert", {
+  if (typeof mapProto.getOrInsert !== "function") {
+    Object.defineProperty(mapProto, "getOrInsert", {
       value: function getOrInsert<T>(this: Map<unknown, T>, key: unknown, value: T): T {
         if (!this.has(key)) {
           this.set(key, value);
