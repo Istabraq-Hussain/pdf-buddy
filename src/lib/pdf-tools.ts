@@ -252,6 +252,7 @@ export async function compressPdf(
   file: File,
   level: CompressionLevel = "low",
 ): Promise<{ bytes: Uint8Array; originalSize: number; newSize: number; level: CompressionLevel }> {
+  console.debug("[compress] start", file.name, level);
   const data = await readFile(file);
   const originalSize = data.byteLength;
 
