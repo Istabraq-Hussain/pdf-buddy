@@ -203,12 +203,15 @@ async function rasterizeToPdf(
   data: Uint8Array,
   preset: Preset,
 ): Promise<Uint8Array> {
+  console.debug("[compress] opening", preset);
   const pdf = await pdfjsLib.getDocument({ data: data.slice(0) }).promise;
+  console.debug("[compress] opened", pdf.numPages);
   const out = await PDFDocument.create();
   const scale = preset.dpi / 72;
   try {
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
+      console.debug("[compress] rendering page", i);
       const base = page.getViewport({ scale: 1 });
       const viewport = page.getViewport({ scale });
       const canvas = document.createElement("canvas");
@@ -219,6 +222,7 @@ async function rasterizeToPdf(
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+      console.debug("[compress] rendered page", i);
       if (preset.gray) {
         const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const d = img.data;
