@@ -263,8 +263,10 @@ export async function compressPdf(
   const presets = COMPRESSION_PRESETS[level];
   if (presets.length) {
     const pdfjsLib: any = await import("pdfjs-dist");
-    const workerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
-    pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+    const PdfWorker = (await import("pdfjs-dist/build/pdf.worker.min.mjs?worker")).default;
+    if (!pdfjsLib.GlobalWorkerOptions.workerPort) {
+      pdfjsLib.GlobalWorkerOptions.workerPort = new PdfWorker();
+    }
     let successfulAttempts = 0;
     let lastError: unknown;
     for (const preset of presets) {
