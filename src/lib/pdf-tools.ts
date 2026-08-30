@@ -184,12 +184,14 @@ export async function addPageNumbers(file: File): Promise<Uint8Array> {
   return await doc.save();
 }
 
-export type CompressionLevel = "low" | "medium" | "strong";
+export type CompressionLevel = "minimum" | "low" | "medium" | "strong" | "maximum";
 
 const COMPRESSION_PRESETS: Record<CompressionLevel, { scale: number; quality: number } | null> = {
-  low: null, // lossless: object streams only
+  minimum: null, // lossless: object streams only
+  low: { scale: 2, quality: 0.9 },
   medium: { scale: 1.35, quality: 0.72 },
   strong: { scale: 1, quality: 0.5 },
+  maximum: { scale: 0.85, quality: 0.35 },
 };
 
 export async function compressPdf(
