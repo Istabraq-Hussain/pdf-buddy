@@ -203,15 +203,12 @@ async function rasterizeToPdf(
   data: Uint8Array,
   preset: Preset,
 ): Promise<Uint8Array> {
-  console.debug("[compress] opening", preset);
   const pdf = await pdfjsLib.getDocument({ data: data.slice(0) }).promise;
-  console.debug("[compress] opened", pdf.numPages);
   const out = await PDFDocument.create();
   const scale = preset.dpi / 72;
   try {
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
-      console.debug("[compress] rendering page", i);
       const base = page.getViewport({ scale: 1 });
       const viewport = page.getViewport({ scale });
       const canvas = document.createElement("canvas");
@@ -222,7 +219,6 @@ async function rasterizeToPdf(
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       await page.render({ canvasContext: ctx, viewport, canvas }).promise;
-      console.debug("[compress] rendered page", i);
       if (preset.gray) {
         const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const d = img.data;
@@ -267,10 +263,8 @@ export async function compressPdf(
   const presets = COMPRESSION_PRESETS[level];
   if (presets.length) {
     const pdfjsLib: any = await import("pdfjs-dist");
-    const PdfWorker = (await import("pdfjs-dist/build/pdf.worker.min.mjs?worker")).default;
-    if (!pdfjsLib.GlobalWorkerOptions.workerPort) {
-      pdfjsLib.GlobalWorkerOptions.workerPort = new PdfWorker();
-    }
+    const workerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
     let successfulAttempts = 0;
     let lastError: unknown;
     for (const preset of presets) {
@@ -280,6 +274,7 @@ export async function compressPdf(
         if (candidate.byteLength < best.byteLength) best = candidate;
       } catch (error) {
         lastError = error;
+        console.error("[compress] preset failed", preset, error);
       }
     }
 
@@ -293,6 +288,7 @@ export async function compressPdf(
         if (candidate.byteLength < best.byteLength) best = candidate;
       } catch (error) {
         lastError = error;
+        console.error("[compress] emergency preset failed", error);
       }
     }
 
