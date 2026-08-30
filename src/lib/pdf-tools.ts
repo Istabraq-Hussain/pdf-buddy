@@ -184,10 +184,65 @@ export async function addPageNumbers(file: File): Promise<Uint8Array> {
   return await doc.save();
 }
 
-export async function compressPdf(file: File): Promise<Uint8Array> {
-  // Basic object-stream compression via pdf-lib re-save with useObjectStreams.
-  const doc = await PDFDocument.load(await readFile(file), { ignoreEncryption: true });
-  return await doc.save({ useObjectStreams: true, addDefaultPage: false });
+export type CompressionLevel = "low" | "medium" | "strong";
+
+const COMPRESSION_PRESETS: Record<CompressionLevel, { scale: number; quality: number } | null> = {
+  low: null, // lossless: object streams only
+  medium: { scale: 1.35, quality: 0.72 },
+  strong: { scale: 1, quality: 0.5 },
+};
+
+export async function compressPdf(
+  file: File,
+  level: CompressionLevel = "low",
+): Promise<{ bytes: Uint8Array; originalSize: number; newSize: number; level: CompressionLevel }> {
+  const data = await readFile(file);
+  const originalSize = data.byteLength;
+
+  const lossless = await PDFDocument.load(data, { ignoreEncryption: true });
+  const losslessBytes = await lossless.save({ useObjectStreams: true, addDefaultPage: false });
+
+  const preset = COMPRESSION_PRESETS[level];
+  if (!preset) {
+    return { bytes: losslessBytes, originalSize, newSize: losslessBytes.byteLength, level };
+  }
+
+  // Lossy: rasterize each page to JPEG and rebuild the document.
+  const pdfjsLib: any = await import("pdfjs-dist");
+  const workerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+
+  const pdf = await pdfjsLib.getDocument({ data: data.slice(0) }).promise;
+  const out = await PDFDocument.create();
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const base = page.getViewport({ scale: 1 });
+    const viewport = page.getViewport({ scale: preset.scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.floor(viewport.width));
+    canvas.height = Math.max(1, Math.floor(viewport.height));
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+    const blob: Blob = await new Promise((r) =>
+      canvas.toBlob((b) => r(b!), "image/jpeg", preset.quality),
+    );
+    const img = await out.embedJpg(new Uint8Array(await blob.arrayBuffer()));
+    const p = out.addPage([base.width, base.height]);
+    p.drawImage(img, { x: 0, y: 0, width: base.width, height: base.height });
+  }
+  const lossyBytes = await out.save({ useObjectStreams: true, addDefaultPage: false });
+
+  // Never hand back something bigger than the lossless result.
+  const bytes = lossyBytes.byteLength < losslessBytes.byteLength ? lossyBytes : losslessBytes;
+  return { bytes, originalSize, newSize: bytes.byteLength, level };
+}
+
+export function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(2)} MB`;
 }
 
 export async function setMetadata(
