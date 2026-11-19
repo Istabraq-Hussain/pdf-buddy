@@ -26,9 +26,6 @@ The installer puts the app in `~/.local/share/pdf24-toolkit`, adds a **PDF24 Too
 - Convert PDF ↔ images, and PDF → Word (.doc/.docx) / ODT
 - Watermarks, page numbers, metadata editing, text extraction
 
-## Built with Lovable
-
-This project was built with [Lovable](https://lovable.dev). Continue developing it in the [Lovable editor](https://lovable.dev/projects/be834c66-cc25-47bc-84df-c24622f1068d) — every change there is committed straight to this repository, and pushes to `main` on GitHub sync back into Lovable.
 
 ## Development
 
