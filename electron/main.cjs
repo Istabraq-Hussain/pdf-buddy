@@ -3,6 +3,9 @@ const { app, BrowserWindow, protocol, shell } = require("electron");
 const fs = require("fs");
 const path = require("path");
 
+// Keep the Linux window class / launcher name stable.
+app.setName("pdf24-toolkit");
+
 protocol.registerSchemesAsPrivileged([
   {
     scheme: "pdf24",
@@ -80,6 +83,7 @@ app.whenReady().then(async () => {
     width: 1200,
     height: 820,
     title: "PDF24 Toolkit",
+    icon: path.join(__dirname, "icon.png"),
     backgroundColor: "#ecfdf5",
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
