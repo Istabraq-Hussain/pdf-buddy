@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- PDF text editing uses a browser-only PDF.js preview and pdf-lib export, with top-left viewport coordinates transformed for crop and rotation, so the offline desktop renderer shares the same implementation.

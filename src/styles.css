@@ -1,5 +1,6 @@
 @import "tailwindcss" source(none);
 @source "../src";
+@source inline("bg-pdf-text-{ink,green,blue,red} fill-pdf-text-{ink,green,blue,red}");
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
@@ -19,6 +20,12 @@
  */
 
 @theme inline {
+  --color-pdf-accent: var(--pdf-accent);
+  --color-pdf-accent-foreground: var(--pdf-accent-foreground);
+  --color-pdf-text-ink: var(--pdf-text-ink);
+  --color-pdf-text-green: var(--pdf-text-green);
+  --color-pdf-text-blue: var(--pdf-text-blue);
+  --color-pdf-text-red: var(--pdf-text-red);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -62,6 +69,12 @@
 }
 
 :root {
+  --pdf-accent: oklch(0.596 0.145 163.225);
+  --pdf-accent-foreground: oklch(1 0 0);
+  --pdf-text-ink: oklch(0 0 0);
+  --pdf-text-green: oklch(0.48 0.109 162);
+  --pdf-text-blue: oklch(0.47 0.19 263);
+  --pdf-text-red: oklch(0.52 0.2 25);
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.129 0.042 264.695);

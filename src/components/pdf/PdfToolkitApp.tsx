@@ -30,6 +30,7 @@ import { FileInput } from "@/components/pdf/FileInput";
 import { ToolCard } from "@/components/pdf/ToolCard";
 import { SignaturePad } from "@/components/pdf/SignaturePad";
 import { SignaturePlacer } from "@/components/pdf/SignaturePlacer";
+import { TextEditor } from "@/components/pdf/TextEditor";
 import {
   addPageNumbers,
   addWatermark,
@@ -442,6 +443,20 @@ function Metadata() {
   );
 }
 
+function AddText() {
+  const [file, setFile] = useState<File | null>(null);
+  const [editing, setEditing] = useState(false);
+  return <>
+    <ToolCard icon={<Type className="h-5 w-5" />} title="Add text" description="">
+      <FileInput onFiles={(files) => setFile(files[0] ?? null)} label="Select PDF" />
+      <Button variant="pdf" className="w-full" disabled={!file} onClick={() => setEditing(true)}>
+        <Type className="h-4 w-4" /> Add text to document
+      </Button>
+    </ToolCard>
+    {editing && file && <TextEditor file={file} onClose={() => setEditing(false)} />}
+  </>;
+}
+
 function Sign() {
   const [file, setFile] = useState<File | null>(null);
   const [sig, setSig] = useState<string | null>(null);
@@ -516,6 +531,7 @@ const tools = [
   { id: "extract-text", label: "Extract text", icon: <Type className="h-3.5 w-3.5" /> },
   { id: "pdf-to-doc", label: "PDF → Word", icon: <FileType2 className="h-3.5 w-3.5" /> },
   { id: "sign", label: "Sign PDF", icon: <PenLine className="h-3.5 w-3.5" /> },
+  { id: "add-text", label: "Add text", icon: <Type className="h-3.5 w-3.5" /> },
   { id: "watermark", label: "Watermark", icon: <Droplets className="h-3.5 w-3.5" /> },
   { id: "page-numbers", label: "Page numbers", icon: <Hash className="h-3.5 w-3.5" /> },
   { id: "metadata", label: "Metadata", icon: <Info className="h-3.5 w-3.5" /> },
@@ -600,6 +616,7 @@ export function PdfToolkitApp() {
           <SectionTitle>Edit</SectionTitle>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             <div id="sign"><Sign /></div>
+            <div id="add-text" className="scroll-mt-24"><AddText /></div>
             <div id="watermark"><Watermark /></div>
             <div id="page-numbers"><PageNumbers /></div>
             <div id="metadata"><Metadata /></div>

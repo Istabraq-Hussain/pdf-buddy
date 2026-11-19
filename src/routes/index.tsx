@@ -12,6 +12,8 @@ export const Route = createFileRoute("/")({
           "All-in-one offline PDF toolkit: merge, split, rotate, compress, watermark, convert and more. Runs entirely in your browser.",
       },
       { property: "og:title", content: "PDF24 Toolkit — Offline PDF tools" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       {
         property: "og:description",
         content: "Merge, split, rotate, compress, watermark and convert PDFs — all offline.",
