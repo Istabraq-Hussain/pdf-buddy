@@ -1,20 +1,38 @@
-# PDF Buddy
+# PDF24 Toolkit
 
-You know the program pdf24
+An offline PDF toolbox for **Linux** — merge, split, rotate, reorder, compress, sign, add text, convert and more, all on your own computer. **No internet connection and no cloud account needed**: every tool runs locally in the app, and your files never leave your machine.
 
-This project was built with [Lovable](https://lovable.dev).
+## Download & install (Linux)
 
-## Build with Lovable
+The app is distributed as a ready-to-run Linux package (`PDF24-Toolkit-linux-x64.tar.gz`). It works on **Ubuntu, Debian, Linux Mint, Fedora, Pop!_OS, Arch** and other 64-bit Linux distributions.
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/be834c66-cc25-47bc-84df-c24622f1068d).
+```bash
+tar xzf PDF24-Toolkit-linux-x64.tar.gz
+cd PDF24-Toolkit-linux-x64
+./install.sh
+```
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+The installer puts the app in `~/.local/share/pdf24-toolkit`, adds a **PDF24 Toolkit** entry (with its own icon) to your app menu, and a `pdf24-toolkit` command. To remove everything later, run `./uninstall.sh` from the same folder.
+
+> The package is built for 64-bit x86 Linux (glibc). There is no Windows or macOS build.
+
+## Tools included
+
+- Merge and split PDFs
+- Rotate, delete and reorder pages
+- Compress PDFs (five levels, from lossless to maximum)
+- Sign PDFs — draw your signature and place it exactly where you want it
+- Add text anywhere on a page
+- Convert PDF ↔ images, and PDF → Word (.doc/.docx) / ODT
+- Watermarks, page numbers, metadata editing, text extraction
+
+## Built with Lovable
+
+This project was built with [Lovable](https://lovable.dev). Continue developing it in the [Lovable editor](https://lovable.dev/projects/be834c66-cc25-47bc-84df-c24622f1068d) — every change there is committed straight to this repository, and pushes to `main` on GitHub sync back into Lovable.
 
 ## Development
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+The app is a TanStack Start (React) web app packaged as an offline desktop app with Electron. You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
 
 ```sh
 git clone <this-repository-url>
