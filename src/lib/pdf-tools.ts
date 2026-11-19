@@ -32,6 +32,7 @@ if (typeof Map !== "undefined" && typeof window !== "undefined") {
 import { PDFDocument, degrees, rgb, StandardFonts } from "pdf-lib";
 import { Document as DocxDocument, Packer, Paragraph, TextRun, PageBreak } from "docx";
 import { zipSync, strToU8 } from "fflate";
+import { textPosition } from "./pdf-text";
 
 export async function readFile(file: File): Promise<Uint8Array> {
   return new Uint8Array(await file.arrayBuffer());
@@ -392,11 +393,19 @@ export async function signPdf(
   const png = await doc.embedPng(pngBytes);
 
   let x: number, y: number, w: number, h: number;
+  let angle = 0;
   if (opts.placement) {
-    w = width * opts.placement.widthPct;
+    // Placement is in top-left viewport fractions (as shown by PDF.js), so account for crop box and rotation.
+    const crop = page.getCropBox();
+    const rot = ((page.getRotation().angle % 360) + 360) % 360;
+    const vw = rot === 90 || rot === 270 ? crop.height : crop.width;
+    const vh = rot === 90 || rot === 270 ? crop.width : crop.height;
+    w = vw * opts.placement.widthPct;
     h = (png.height / png.width) * w;
-    x = width * opts.placement.xPct;
-    y = height - opts.placement.yPct * height - h;
+    const anchor = textPosition(crop, rot, vw * opts.placement.xPct, vh * opts.placement.yPct + h);
+    x = anchor.x;
+    y = anchor.y;
+    angle = anchor.angle;
   } else {
     const targetW = width * (opts.widthPct ?? 0.35);
     const scale = targetW / png.width;
@@ -412,7 +421,7 @@ export async function signPdf(
           : width - w - margin;
     y = margin;
   }
-  page.drawImage(png, { x, y, width: w, height: h });
+  page.drawImage(png, { x, y, width: w, height: h, rotate: degrees(angle) });
   return await doc.save();
 }
 
